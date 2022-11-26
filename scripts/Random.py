@@ -19,12 +19,12 @@ from my import *
 
 logger = logging.getLogger(__name__)
 logger.handlers.clear()
-#logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 #logger.setLevel(logging.INFO)
 #logger.setLevel(logging.WARNING)
 
 # 일반 핸들러. 할 필요 업음. 이미 메인에서 출력해줌
-streamFormatter = logging.Formatter("Random %(asctime)s %(levelname)s %(message)s")
+streamFormatter = logging.Formatter("Random %(asctime)s %(levelname)s\t: %(message)s")
 streamHandler = logging.StreamHandler()
 streamHandler.setLevel(logging.DEBUG)
 #streamHandler.setLevel(logging.INFO)
@@ -34,7 +34,7 @@ logger.addHandler(streamHandler)
 
 # 파일 핸들러
 fileFormatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-fileHandler = logging.FileHandler("Random.%(asctime)s.log")
+fileHandler = logging.FileHandler("Random.py.log")
 fileHandler.setLevel(logging.DEBUG)
 fileHandler.setFormatter(fileFormatter)
 logger.addHandler(fileHandler)
@@ -59,7 +59,7 @@ class Script(scripts.Script):
         
     def show(self, is_img2img):
         self.is_img2img=is_img2img
-        return True
+        return scripts.AlwaysVisible
         
     def ui(self,is_img2img):
         with gr.Group():
@@ -67,15 +67,53 @@ class Script(scripts.Script):
                 is_enabled = gr.Checkbox(label=f"{self.title()} enabled", value=True)
                 
                 with gr.Group():
+                    step1 = gr.Slider(minimum=1,maximum=150,step=1,label='step1 min/max',value=10, elem_id="rnd-step1")
+                    step2 = gr.Slider(minimum=1,maximum=150,step=1,label='step2 min/max',value=15, elem_id="rnd-step2")
+                
+                with gr.Group():
+                    cfg1 = gr.Slider(minimum=1,maximum=30,step=0.5,label='cfg1 min/max',value=6 , elem_id="rnd-cfg1")
+                    cfg2 = gr.Slider(minimum=1,maximum=30,step=0.5,label='cfg2 min/max',value=15, elem_id="rnd-cfg2")
+                
+                with gr.Group():
+                    gr.Markdown("only i2i option", elem_id="rnd-denoising",css=".gradio-container {min-height: 6rem;}")
+                    denoising1 = gr.Slider(minimum=0,maximum=1,step=0.01,label='denoising1 min/max',value=0.5, elem_id="rnd-denoising1")
+                    denoising2 = gr.Slider(minimum=0,maximum=1,step=0.01,label='denoising2 min/max',value=1.0, elem_id="rnd-denoising2")
+                
+                with gr.Group():
                     if is_img2img:
-                        loops = gr.Slider(minimum=1,maximum=10000,step=1,label='Loops',value=1, elem_id="rnd-loops")
+                        no_resize = gr.Checkbox(label='no resize',value=True , elem_id="rnd-no-resize")
                     else:
-                        loops = gr.Slider(minimum=1,maximum=10000,step=1,label='Loops',value=10000, elem_id="rnd-loops")
-        return [is_enabled,loops]
+                        no_resize = gr.Checkbox(label='no resize',value=False, elem_id="rnd-no-resize")
+                    w1 = gr.Slider(minimum=64,maximum=2048,step=64,label='width 1 min/max' ,value=512 , elem_id="rnd-w1")
+                    w2 = gr.Slider(minimum=64,maximum=2048,step=64,label='width 2 min/max' ,value=768 , elem_id="rnd-w2")
+                    h1 = gr.Slider(minimum=64,maximum=2048,step=64,label='height 1 min/max',value=512 , elem_id="rnd-h1")
+                    h2 = gr.Slider(minimum=64,maximum=2048,step=64,label='height 2 min/max',value=768 , elem_id="rnd-h2")
+                    
+                    fix_wh = gr.Radio(label='fix width height direction', choices=[x for x in self.fix_whs], value=self.fix_whs[0], type="index", elem_id="rnd-fix_wh")
+
+                with gr.Group():
+                    if is_img2img:
+                        rnd_sampler = gr.CheckboxGroup(label='Sampling Random', elem_id="rnd_sampler", choices=[x.name for x in samplers],value=[x.name for x in samplers_for_img2img])#, type="index"
+                    else :
+                        rnd_sampler = gr.CheckboxGroup(label='Sampling Random', elem_id="rnd_sampler", choices=[x.name for x in samplers],value=[x.name for x in samplers])#, type="index"
+                
+                with gr.Group():
+                    fixed_seeds = gr.Checkbox(label='Keep -1 for seeds',value=True)
+            
+        return [
+            is_enabled,
+            step1,step2,cfg1,cfg2,denoising1,denoising2,
+            no_resize,w1,w2,h1,h2,fix_wh,
+            rnd_sampler,
+            fixed_seeds
+        ]
         
     def process_batch(self, p,
         is_enabled,
-        loops,
+        step1,step2,cfg1,cfg2,denoising1,denoising2,
+        no_resize,w1,w2,h1,h2,fix_wh,
+        rnd_sampler,
+        fixed_seeds,
         *args,
         **kwargs
     ):
@@ -85,8 +123,48 @@ class Script(scripts.Script):
 
     def process(self,p,
         is_enabled,
-        loops,
+        step1,step2,cfg1,cfg2,denoising1,denoising2,
+        no_resize,w1,w2,h1,h2,fix_wh,
+        rnd_sampler,
+        fixed_seeds
     ):
         if not is_enabled:
             logger.debug(f"{self.title()} disabled - exiting")
             return p
+        logger.debug(f"{step1};{step2};{cfg1};{cfg2};{denoising1};{denoising2};")
+        logger.debug(f"{no_resize};{w1};{w2};{h1};{h2};{fix_wh};")
+        logger.debug(f"{rnd_sampler};{fixed_seeds};")
+        
+        # Random
+        (stepmin,stepmax)= (min(step1,step2),max(step1,step2))
+        p.steps=random.randint(stepmin,stepmax)
+        (cfgmin,cfgmax)= (min(cfg1,cfg2),max(cfg1,cfg2))
+        p.cfg_scale=random.randint(0, int((cfgmax - cfgmin) / 0.5)) * 0.5 + cfgmin
+
+        if not no_resize:
+            h1=h1/64
+            h2=h2/64
+            w1=w1/64
+            w2=w2/64
+            (wmin,wmax)= (min(w1,w2),max(w1,w2))
+            (hmin,hmax)= (min(h1,h2),max(h1,h2))
+            p.width=random.randint(wmin,wmax)*64
+            p.height=random.randint(hmin,hmax)*64
+            wh_chg = self.fix_whs_d.get(fix_wh, wh_chg_n)
+            wh_chg(p)
+            
+        if len(rnd_sampler) == 1:
+            p.sampler_name=rnd_sampler[0]
+        elif len(rnd_sampler) > 1:
+            p.sampler_name=random.choice(rnd_sampler)
+            
+        if self.is_img2img:
+            (dmin,dmax)= (min(denoising1,denoising2),max(denoising1,denoising2))
+            p.denoising_strength=random.uniform(dmin,dmax)
+            logger.info(f"steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
+        else :
+            logger.info(f"steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ;")
+        
+        if fixed_seeds:
+            p.seed=-1;
+            processing.fix_seed(p)
