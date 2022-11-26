@@ -17,6 +17,8 @@ from modules.sd_samplers import samplers,samplers_for_img2img
 import logging
 from my import *
 
+is_debug = getattr(opts, "is_debug", False)
+
 logger = logging.getLogger(__name__)
 logger.handlers.clear()
 logger.setLevel(logging.DEBUG)
@@ -26,8 +28,10 @@ logger.setLevel(logging.DEBUG)
 # 일반 핸들러. 할 필요 업음. 이미 메인에서 출력해줌
 streamFormatter = logging.Formatter("Random %(asctime)s %(levelname)s\t: %(message)s")
 streamHandler = logging.StreamHandler()
-#streamHandler.setLevel(logging.DEBUG)
-streamHandler.setLevel(logging.INFO)
+if is_debug :
+    streamHandler.setLevel(logging.DEBUG)
+else:
+    streamHandler.setLevel(logging.INFO)
 #streamHandler.setLevel(logging.WARNING)
 streamHandler.setFormatter(streamFormatter)
 logger.addHandler(streamHandler)
@@ -39,14 +43,14 @@ fileHandler.setLevel(logging.DEBUG)
 fileHandler.setFormatter(fileFormatter)
 logger.addHandler(fileHandler)
 
-if logger.getEffectiveLevel() == logging.DEBUG :
+if is_debug :
+    logger.debug('==== DEBUG ====')
     logger.debug('debug')
     logger.info('info')
     logger.warning('warning')
     logger.error('error')
     logger.critical('critical')
 
-logger.debug('==== DEBUG ====')
 logger.info(' Load ')
 
 class Script(scripts.Script):
