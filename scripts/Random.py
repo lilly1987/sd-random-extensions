@@ -17,13 +17,16 @@ from modules.sd_samplers import samplers,samplers_for_img2img
 import logging
 from my import *
 
-is_debug = getattr(opts, "is_debug", False)
+is_debug = getattr(opts, f"{__name__}_debug", False)
+#setattr(opts, f"{__name__}_debug", is_debug)
 
 logger = logging.getLogger(__name__)
 logger.handlers.clear()
 logger.setLevel(logging.DEBUG)
 #logger.setLevel(logging.INFO)
 #logger.setLevel(logging.WARNING)
+#logger.setLevel(logging.ERROR)
+#logger.setLevel(logging.CRITICAL)
 
 # 일반 핸들러. 할 필요 업음. 이미 메인에서 출력해줌
 streamFormatter = logging.Formatter("Random %(asctime)s %(levelname)s\t: %(message)s")
@@ -71,6 +74,10 @@ class Script(scripts.Script):
                 is_enabled = gr.Checkbox(label=f"{self.title()} enabled", value=True)
                 
                 with gr.Group():
+                    sd_hypernetwork_strength1 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength1 min/max',value=0.0 , elem_id="rnd-sd_hypernetwork_strength1")
+                    sd_hypernetwork_strength2 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength2 min/max',value=1.0 , elem_id="rnd-sd_hypernetwork_strength2")
+                
+                with gr.Group():
                     step1 = gr.Slider(minimum=1,maximum=150,step=1,label='step1 min/max',value=10, elem_id="rnd-step1")
                     step2 = gr.Slider(minimum=1,maximum=150,step=1,label='step2 min/max',value=15, elem_id="rnd-step2")
                 
@@ -106,6 +113,7 @@ class Script(scripts.Script):
             
         return [
             is_enabled,
+            sd_hypernetwork_strength1,sd_hypernetwork_strength2,
             step1,step2,cfg1,cfg2,denoising1,denoising2,
             no_resize,w1,w2,h1,h2,fix_wh,
             rnd_sampler,
@@ -114,6 +122,7 @@ class Script(scripts.Script):
         
     def process_batch(self, p,
         is_enabled,
+        sd_hypernetwork_strength1,sd_hypernetwork_strength2,
         step1,step2,cfg1,cfg2,denoising1,denoising2,
         no_resize,w1,w2,h1,h2,fix_wh,
         rnd_sampler,
@@ -127,6 +136,7 @@ class Script(scripts.Script):
 
     def process(self,p,
         is_enabled,
+        sd_hypernetwork_strength1,sd_hypernetwork_strength2,
         step1,step2,cfg1,cfg2,denoising1,denoising2,
         no_resize,w1,w2,h1,h2,fix_wh,
         rnd_sampler,
@@ -135,13 +145,13 @@ class Script(scripts.Script):
         if not is_enabled:
             logger.debug(f"{self.title()} disabled - exiting")
             return p
-        logger.debug(f"{step1};{step2};{cfg1};{cfg2};{denoising1};{denoising2};")
+        logger.debug(f"{sd_hypernetwork_strength1};{sd_hypernetwork_strength2};{step1};{step2};{cfg1};{cfg2};{denoising1};{denoising2};")
         logger.debug(f"{no_resize};{w1};{w2};{h1};{h2};{fix_wh};")
         logger.debug(f"{rnd_sampler};{fixed_seeds};")
         
         # Random
-        (stepmin,stepmax)= (min(step1,step2),max(step1,step2))
-        p.steps=random.randint(stepmin,stepmax)
+        p.sd_hypernetwork_strength=random.randint(min(sd_hypernetwork_strength1,sd_hypernetwork_strength2),max(sd_hypernetwork_strength1,sd_hypernetwork_strength2))
+        p.steps=random.randint(min(step1,step2),max(step1,step2))
         (cfgmin,cfgmax)= (min(cfg1,cfg2),max(cfg1,cfg2))
         p.cfg_scale=random.randint(0, int((cfgmax - cfgmin) / 0.5)) * 0.5 + cfgmin
 
@@ -150,10 +160,8 @@ class Script(scripts.Script):
             h2=h2/64
             w1=w1/64
             w2=w2/64
-            (wmin,wmax)= (min(w1,w2),max(w1,w2))
-            (hmin,hmax)= (min(h1,h2),max(h1,h2))
-            p.width=random.randint(wmin,wmax)*64
-            p.height=random.randint(hmin,hmax)*64
+            p.width=random.randint(min(w1,w2),max(w1,w2))*64
+            p.height=random.randint(min(h1,h2),max(h1,h2))*64
             wh_chg = self.fix_whs_d.get(fix_wh, wh_chg_n)
             wh_chg(p)
             
@@ -163,11 +171,10 @@ class Script(scripts.Script):
             p.sampler_name=random.choice(rnd_sampler)
             
         if self.is_img2img:
-            (dmin,dmax)= (min(denoising1,denoising2),max(denoising1,denoising2))
-            p.denoising_strength=random.uniform(dmin,dmax)
-            logger.info(f"steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
+            p.denoising_strength=random.uniform(min(denoising1,denoising2),max(denoising1,denoising2))
+            logger.info(f"hypernetwork strength:{opts.sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
         else :
-            logger.info(f"steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ;")
+            logger.info(f"hypernetwork strength:{opts.sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ;")
         
         if fixed_seeds:
             p.seed=-1;
