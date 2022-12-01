@@ -12,12 +12,13 @@ import re,random
 from modules.images import FilenameGenerator
 from PIL import Image
 from modules import processing,shared,generation_parameters_copypaste
-from modules.shared import opts,state
+from modules.shared import opts,state,hypernetworks
 from modules.sd_samplers import samplers,samplers_for_img2img
 import logging
 from my import *
+from modules.hypernetworks import hypernetwork
 
-is_debug = getattr(opts, f"{__name__}_debug", False)
+is_debug = getattr(opts, f"is_debug", False)
 #setattr(opts, f"{__name__}_debug", is_debug)
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,15 @@ if is_debug :
 
 logger.info(' Load ')
 
+def apply_hypernetwork(x):
+    if x.lower() in ["", "none"]:
+        name = None
+    else:
+        name = hypernetwork.find_closest_hypernetwork_name(x)
+        if not name:
+            raise RuntimeError(f"Unknown hypernetwork: {x}")
+    hypernetwork.load_hypernetwork(name)
+
 class Script(scripts.Script):
     fix_whs=['none','width long','height long','random']
     fix_whs_d={0 : wh_chg_n, 1: wh_chg_w, 2 : wh_chg_h, 3 : wh_chg_r}
@@ -74,6 +84,8 @@ class Script(scripts.Script):
                 is_enabled = gr.Checkbox(label=f"{self.title()} enabled", value=True)
                 
                 with gr.Group():
+                    noHypernetwork = gr.Checkbox(label=f"No Hypernetwork Random choices", value=False)
+                    rHypernetworks = gr.CheckboxGroup(label='Hypernetwork', choices=["None"] + [x for x in hypernetworks.keys()], value=["None"] + [x for x in hypernetworks.keys()], elem_id="rnd-Hypernetwork")
                     sd_hypernetwork_strength1 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength1 min/max',value=0.0 , elem_id="rnd-sd_hypernetwork_strength1")
                     sd_hypernetwork_strength2 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength2 min/max',value=1.0 , elem_id="rnd-sd_hypernetwork_strength2")
                 
@@ -113,7 +125,7 @@ class Script(scripts.Script):
             
         return [
             is_enabled,
-            sd_hypernetwork_strength1,sd_hypernetwork_strength2,
+            noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
             step1,step2,cfg1,cfg2,denoising1,denoising2,
             no_resize,w1,w2,h1,h2,fix_wh,
             rnd_sampler,
@@ -122,7 +134,7 @@ class Script(scripts.Script):
         
     def process_batch(self, p,
         is_enabled,
-        sd_hypernetwork_strength1,sd_hypernetwork_strength2,
+        noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
         step1,step2,cfg1,cfg2,denoising1,denoising2,
         no_resize,w1,w2,h1,h2,fix_wh,
         rnd_sampler,
@@ -136,7 +148,7 @@ class Script(scripts.Script):
 
     def process(self,p,
         is_enabled,
-        sd_hypernetwork_strength1,sd_hypernetwork_strength2,
+        noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
         step1,step2,cfg1,cfg2,denoising1,denoising2,
         no_resize,w1,w2,h1,h2,fix_wh,
         rnd_sampler,
@@ -145,15 +157,33 @@ class Script(scripts.Script):
         if not is_enabled:
             logger.debug(f"{self.title()} disabled - exiting")
             return p
-        logger.debug(f"{sd_hypernetwork_strength1};{sd_hypernetwork_strength2};{step1};{step2};{cfg1};{cfg2};{denoising1};{denoising2};")
+        logger.debug(f"{rHypernetworks};{sd_hypernetwork_strength1};{sd_hypernetwork_strength2};")
+        logger.debug(f"{step1};{step2};{cfg1};{cfg2};{denoising1};{denoising2};")
         logger.debug(f"{no_resize};{w1};{w2};{h1};{h2};{fix_wh};")
         logger.debug(f"{rnd_sampler};{fixed_seeds};")
         
         # Random
-        p.sd_hypernetwork_strength=random.randint(min(sd_hypernetwork_strength1,sd_hypernetwork_strength2),max(sd_hypernetwork_strength1,sd_hypernetwork_strength2))
+        
+        #shared.opts.onchange("sd_hypernetwork", wrap_queued_call(lambda: modules.hypernetworks.hypernetwork.load_hypernetwork(shared.opts.sd_hypernetwork)))
+        
+        rHypernetwork=opts.sd_hypernetwork
+        if not noHypernetwork:
+            if len(rHypernetworks) == 1:
+                rHypernetwork=rHypernetworks[0]
+                apply_hypernetwork(rHypernetworks[0])
+            elif len(rHypernetworks) > 1:
+                rHypernetwork=random.choice(rHypernetworks)
+                apply_hypernetwork(rHypernetwork)
+        
+        (hpmin,hpmax)=(min(sd_hypernetwork_strength1,sd_hypernetwork_strength2),max(sd_hypernetwork_strength1,sd_hypernetwork_strength2))
+        sd_hypernetwork_strength=random.randint(0, int((hpmax - hpmin) / 0.001)) * 0.001 + hpmin
+        hypernetwork.apply_strength(sd_hypernetwork_strength)
+        
         p.steps=random.randint(min(step1,step2),max(step1,step2))
+        
         (cfgmin,cfgmax)= (min(cfg1,cfg2),max(cfg1,cfg2))
         p.cfg_scale=random.randint(0, int((cfgmax - cfgmin) / 0.5)) * 0.5 + cfgmin
+
 
         if not no_resize:
             h1=h1/64
@@ -172,9 +202,9 @@ class Script(scripts.Script):
             
         if self.is_img2img:
             p.denoising_strength=random.uniform(min(denoising1,denoising2),max(denoising1,denoising2))
-            logger.info(f"hypernetwork strength:{opts.sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
+            logger.info(f"hypernetwork:{rHypernetwork} ; hypernetwork strength:{sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
         else :
-            logger.info(f"hypernetwork strength:{opts.sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ;")
+            logger.info(f"hypernetwork:{rHypernetwork} ; hypernetwork strength:{sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ;")
         
         if fixed_seeds:
             p.seed=-1;
