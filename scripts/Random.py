@@ -84,10 +84,11 @@ class Script(scripts.Script):
                 is_enabled = gr.Checkbox(label=f"{self.title()} enabled", value=True)
                 
                 with gr.Group():
-                    noHypernetwork = gr.Checkbox(label=f"No Hypernetwork Random choices", value=False)
-                    rHypernetworks = gr.CheckboxGroup(label='Hypernetwork', choices=["None"] + [x for x in hypernetworks.keys()], value=["None"] + [x for x in hypernetworks.keys()], elem_id="rnd-Hypernetwork")
                     sd_hypernetwork_strength1 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength1 min/max',value=0.0 , elem_id="rnd-sd_hypernetwork_strength1")
                     sd_hypernetwork_strength2 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength2 min/max',value=1.0 , elem_id="rnd-sd_hypernetwork_strength2")
+                    with gr.Accordion("Hypernetwork", open=False):
+                        noHypernetwork = gr.Checkbox(label=f"No Hypernetwork Random choices", value=False)
+                        rHypernetworks = gr.CheckboxGroup(label='Hypernetwork', choices=["None"] + [x for x in hypernetworks.keys()], value=["None"] + [x for x in hypernetworks.keys()], elem_id="rnd-Hypernetwork")
                 
                 with gr.Group():
                     step1 = gr.Slider(minimum=1,maximum=150,step=1,label='step1 min/max',value=10, elem_id="rnd-step1")
