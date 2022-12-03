@@ -13,10 +13,11 @@ from modules.images import FilenameGenerator
 from PIL import Image
 from modules import processing,shared,generation_parameters_copypaste
 from modules.shared import opts,state,hypernetworks
-from modules.sd_samplers import samplers,samplers_for_img2img
+from modules.sd_samplers import samplers,samplers_for_img2img ,set_samplers
 import logging
 from my import *
 from modules.hypernetworks import hypernetwork
+from modules.ui import create_refresh_button
 
 is_debug = getattr(opts, f"is_debug", False)
 #setattr(opts, f"{__name__}_debug", is_debug)
@@ -66,6 +67,26 @@ def apply_hypernetwork(x):
             raise RuntimeError(f"Unknown hypernetwork: {x}")
     hypernetwork.load_hypernetwork(name)
 
+def apply_samplers():
+    #global samplers, samplers_for_img2img
+    #
+    #hidden = set(opts.hide_samplers)
+    #hidden_img2img = set(opts.hide_samplers + ['PLMS'])
+    #
+    #samplers = [x for x in all_samplers if x.name not in hidden]
+    #samplers_for_img2img = [x for x in all_samplers if x.name not in hidden_img2img]
+    #
+    #samplers_map.clear()
+    #for sampler in all_samplers:
+    #    samplers_map[sampler.name.lower()] = sampler.name
+    #    for alias in sampler.aliases:
+    #        samplers_map[alias.lower()] = sampler.name
+    
+    set_samplers()
+    logger.debug(f"{[x.name for x in samplers]}")
+    logger.debug(f"{[x.name for x in samplers_for_img2img]}")
+            
+            
 class Script(scripts.Script):
     fix_whs=['none','width long','height long','random']
     fix_whs_d={0 : wh_chg_n, 1: wh_chg_w, 2 : wh_chg_h, 3 : wh_chg_r}
@@ -89,6 +110,7 @@ class Script(scripts.Script):
                     with gr.Accordion("Hypernetwork", open=False):
                         noHypernetwork = gr.Checkbox(label=f"No Hypernetwork Random choices", value=False)
                         rHypernetworks = gr.CheckboxGroup(label='Hypernetwork', choices=["None"] + [x for x in hypernetworks.keys()], value=["None"] + [x for x in hypernetworks.keys()], elem_id="rnd-Hypernetwork")
+                    create_refresh_button(rHypernetworks, shared.reload_hypernetworks, lambda: {"choices": (["None"] + [x for x in shared.hypernetworks.keys()]) , "value": ["None"] + [x for x in hypernetworks.keys()] } , "refresh_rHypernetworks")
                 
                 with gr.Group():
                     step1 = gr.Slider(minimum=1,maximum=150,step=1,label='step1 min/max',value=10, elem_id="rnd-step1")
@@ -118,8 +140,10 @@ class Script(scripts.Script):
                 with gr.Group():
                     if is_img2img:
                         rnd_sampler = gr.CheckboxGroup(label='Sampling Random', elem_id="rnd_sampler", choices=[x.name for x in samplers],value=[x.name for x in samplers_for_img2img])#, type="index"
+                        create_refresh_button(rnd_sampler, apply_samplers, lambda: {"choices": [x.name for x in samplers_for_img2img],"value": [x.name for x in samplers_for_img2img]}, "refresh_rnd_sampler")
                     else :
                         rnd_sampler = gr.CheckboxGroup(label='Sampling Random', elem_id="rnd_sampler", choices=[x.name for x in samplers],value=[x.name for x in samplers])#, type="index"
+                        create_refresh_button(rnd_sampler, apply_samplers, lambda: {"choices": [x.name for x in samplers],"value": [x.name for x in samplers]}, "refresh_rnd_sampler")
                 
                 with gr.Group():
                     fixed_seeds = gr.Checkbox(label='Keep -1 for seeds',value=True)
