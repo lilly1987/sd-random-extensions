@@ -83,20 +83,20 @@ def apply_samplers():
     #        samplers_map[alias.lower()] = sampler.name
     
     set_samplers()
-    logger.debug(f"{[x.name for x in samplers]}")
-    logger.debug(f"{[x.name for x in samplers_for_img2img]}")
+    #logger.debug(f"{[x.name for x in samplers]}")
+    #logger.debug(f"{[x.name for x in samplers_for_img2img]}")
             
             
 class Script(scripts.Script):
     fix_whs=['none','width long','height long','random']
     fix_whs_d={0 : wh_chg_n, 1: wh_chg_w, 2 : wh_chg_h, 3 : wh_chg_r}
-    is_img2img=True
+    #is_img2img=True
     
     def title(self):
         return "Random"
         
     def show(self, is_img2img):
-        self.is_img2img=is_img2img
+        #self.is_img2img=is_img2img
         return scripts.AlwaysVisible
         
     def ui(self,is_img2img):
@@ -182,10 +182,10 @@ class Script(scripts.Script):
         if not is_enabled:
             logger.debug(f"{self.title()} disabled - exiting")
             return p
-        logger.debug(f"{rHypernetworks};{sd_hypernetwork_strength1};{sd_hypernetwork_strength2};")
-        logger.debug(f"{step1};{step2};{cfg1};{cfg2};{denoising1};{denoising2};")
-        logger.debug(f"{no_resize};{w1};{w2};{h1};{h2};{fix_wh};")
-        logger.debug(f"{rnd_sampler};{fixed_seeds};")
+        #logger.debug(f"{rHypernetworks};{sd_hypernetwork_strength1};{sd_hypernetwork_strength2};")
+        #logger.debug(f"{step1};{step2};{cfg1};{cfg2};{denoising1};{denoising2};")
+        #logger.debug(f"{no_resize};{w1};{w2};{h1};{h2};{fix_wh};")
+        #logger.debug(f"{rnd_sampler};{fixed_seeds};")
         
         # Random
         
@@ -224,12 +224,12 @@ class Script(scripts.Script):
             p.sampler_name=rnd_sampler[0]
         elif len(rnd_sampler) > 1:
             p.sampler_name=random.choice(rnd_sampler)
-            
-        if self.is_img2img:
-            p.denoising_strength=random.uniform(min(denoising1,denoising2),max(denoising1,denoising2))
-            logger.info(f"hypernetwork:{rHypernetwork} ; hypernetwork strength:{sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
-        else :
-            logger.info(f"hypernetwork:{rHypernetwork} ; hypernetwork strength:{sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ;")
+        #logger.info(f"is_img2img:{self.is_img2img} ;")
+        #if self.is_img2img:
+        p.denoising_strength=random.uniform(min(denoising1,denoising2),max(denoising1,denoising2))
+        logger.info(f"hypernetwork:{rHypernetwork} ; hypernetwork strength:{sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
+        #else :
+        #    logger.info(f"hypernetwork:{rHypernetwork} ; hypernetwork strength:{sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ;")
         
         if fixed_seeds:
             p.seed=-1;
