@@ -104,13 +104,13 @@ class Script(scripts.Script):
             with gr.Accordion(self.title(), open=False):
                 is_enabled = gr.Checkbox(label=f"{self.title()} enabled", value=True)
                 
-                with gr.Group():
-                    sd_hypernetwork_strength1 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength1 min/max',value=0.0 , elem_id="rnd-sd_hypernetwork_strength1")
-                    sd_hypernetwork_strength2 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength2 min/max',value=1.0 , elem_id="rnd-sd_hypernetwork_strength2")
-                    with gr.Accordion("Hypernetwork", open=False):
-                        noHypernetwork = gr.Checkbox(label=f"No Hypernetwork Random choices", value=False)
-                        rHypernetworks = gr.CheckboxGroup(label='Hypernetwork', choices=["None"] + [x for x in shared.hypernetworks.keys()], value=["None"] + [x for x in shared.hypernetworks.keys()], elem_id="rnd-Hypernetwork")
-                    create_refresh_button(rHypernetworks, shared.reload_hypernetworks, lambda: {"choices": (["None"] + [x for x in shared.hypernetworks.keys()]) , "value": ["None"] + [x for x in shared.hypernetworks.keys()] } , "refresh_rHypernetworks")
+                #with gr.Group():
+                #    sd_hypernetwork_strength1 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength1 min/max',value=0.0 , elem_id="rnd-sd_hypernetwork_strength1")
+                #    sd_hypernetwork_strength2 = gr.Slider(minimum=0.0,maximum=1.0,step=0.001,label='sd_hypernetwork_strength2 min/max',value=1.0 , elem_id="rnd-sd_hypernetwork_strength2")
+                #    with gr.Accordion("Hypernetwork", open=False):
+                #        noHypernetwork = gr.Checkbox(label=f"No Hypernetwork Random choices", value=False)
+                #        rHypernetworks = gr.CheckboxGroup(label='Hypernetwork', choices=["None"] + [x for x in shared.hypernetworks.keys()], value=["None"] + [x for x in shared.hypernetworks.keys()], elem_id="rnd-Hypernetwork")
+                #    create_refresh_button(rHypernetworks, shared.reload_hypernetworks, lambda: {"choices": (["None"] + [x for x in shared.hypernetworks.keys()]) , "value": ["None"] + [x for x in shared.hypernetworks.keys()] } , "refresh_rHypernetworks")
                 
                 with gr.Group():
                     step1 = gr.Slider(minimum=1,maximum=150,step=1,label='step1 min/max',value=10, elem_id="rnd-step1")
@@ -150,35 +150,35 @@ class Script(scripts.Script):
             
         return [
             is_enabled,
-            noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
+            
             step1,step2,cfg1,cfg2,denoising1,denoising2,
             no_resize,w1,w2,h1,h2,fix_wh,
             rnd_sampler,
             fixed_seeds
         ]
-        
+        #noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
     def process_batch(self, p,
         is_enabled,
-        noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
+        
         step1,step2,cfg1,cfg2,denoising1,denoising2,
         no_resize,w1,w2,h1,h2,fix_wh,
         rnd_sampler,
         fixed_seeds,
         *args,
         **kwargs
-    ):
+    ):  #noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
         if not is_enabled:
             logger.debug(f"{self.title()} disabled - exiting")
             return p
 
     def process(self,p,
         is_enabled,
-        noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
+        
         step1,step2,cfg1,cfg2,denoising1,denoising2,
         no_resize,w1,w2,h1,h2,fix_wh,
         rnd_sampler,
         fixed_seeds
-    ):
+    ):  #noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
         if not is_enabled:
             logger.debug(f"{self.title()} disabled - exiting")
             return p
@@ -191,18 +191,18 @@ class Script(scripts.Script):
         
         #shared.opts.onchange("sd_hypernetwork", wrap_queued_call(lambda: modules.hypernetworks.hypernetwork.load_hypernetwork(shared.opts.sd_hypernetwork)))
         
-        rHypernetwork=opts.sd_hypernetwork
-        if not noHypernetwork:
-            if len(rHypernetworks) == 1:
-                rHypernetwork=rHypernetworks[0]
-                apply_hypernetwork(rHypernetworks[0])
-            elif len(rHypernetworks) > 1:
-                rHypernetwork=random.choice(rHypernetworks)
-                apply_hypernetwork(rHypernetwork)
+        #rHypernetwork=opts.sd_hypernetwork
+        #if not noHypernetwork:
+        #    if len(rHypernetworks) == 1:
+        #        rHypernetwork=rHypernetworks[0]
+        #        apply_hypernetwork(rHypernetworks[0])
+        #    elif len(rHypernetworks) > 1:
+        #        rHypernetwork=random.choice(rHypernetworks)
+        #        apply_hypernetwork(rHypernetwork)
         
-        (hpmin,hpmax)=(min(sd_hypernetwork_strength1,sd_hypernetwork_strength2),max(sd_hypernetwork_strength1,sd_hypernetwork_strength2))
-        sd_hypernetwork_strength=random.randint(0, int((hpmax - hpmin) / 0.001)) * 0.001 + hpmin
-        hypernetwork.apply_strength(sd_hypernetwork_strength)
+        #(hpmin,hpmax)=(min(sd_hypernetwork_strength1,sd_hypernetwork_strength2),max(sd_hypernetwork_strength1,sd_hypernetwork_strength2))
+        #sd_hypernetwork_strength=random.randint(0, int((hpmax - hpmin) / 0.001)) * 0.001 + hpmin
+        #hypernetwork.apply_strength(sd_hypernetwork_strength)
         
         p.steps=random.randint(min(step1,step2),max(step1,step2))
         
@@ -227,7 +227,8 @@ class Script(scripts.Script):
         #logger.info(f"is_img2img:{self.is_img2img} ;")
         #if self.is_img2img:
         p.denoising_strength=random.uniform(min(denoising1,denoising2),max(denoising1,denoising2))
-        logger.info(f"hypernetwork:{rHypernetwork} ; hypernetwork strength:{sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
+        logger.info(f"steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
+        #logger.info(f"hypernetwork:{rHypernetwork} ; hypernetwork strength:{sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ; denoising_strength:{p.denoising_strength} ; ")
         #else :
         #    logger.info(f"hypernetwork:{rHypernetwork} ; hypernetwork strength:{sd_hypernetwork_strength} ; steps:{p.steps} ; cfg:{p.cfg_scale} ; width:{p.width} ; height:{p.height} ;")
         
