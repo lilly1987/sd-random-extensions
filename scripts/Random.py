@@ -207,7 +207,7 @@ class Script(scripts.Script):
         p.steps=random.randint(min(step1,step2),max(step1,step2))
         
         (cfgmin,cfgmax)= (min(cfg1,cfg2),max(cfg1,cfg2))
-        p.cfg_scale=random.randint(0, int((cfgmax - cfgmin) / 0.5)) * 0.5 + cfgmin
+        p.cfg_scale=random.randint(0, int((cfgmax - cfgmin) * 2)) / 2 + cfgmin
 
 
         if not no_resize:
