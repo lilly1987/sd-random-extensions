@@ -181,7 +181,7 @@ class Script(scripts.Script):
     ):  #noHypernetwork,rHypernetworks,sd_hypernetwork_strength1,sd_hypernetwork_strength2,
         if not is_enabled:
             logger.debug(f"{self.title()} disabled - exiting")
-            return p
+            return 
         #logger.debug(f"{rHypernetworks};{sd_hypernetwork_strength1};{sd_hypernetwork_strength2};")
         #logger.debug(f"{step1};{step2};{cfg1};{cfg2};{denoising1};{denoising2};")
         #logger.debug(f"{no_resize};{w1};{w2};{h1};{h2};{fix_wh};")
